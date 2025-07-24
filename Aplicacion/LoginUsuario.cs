@@ -27,11 +27,7 @@ namespace Microservicio.Login.Api.Aplicacion
             private readonly JwtSettings _jwtSettings;
             private readonly TokenService _tokenService;
 
-            public Manejador(
-                ContextoMongo contexto,
-                IMapper mapper,
-                IOptions<JwtSettings> jwtOptions,
-                TokenService tokenService)
+            public Manejador(ContextoMongo contexto,IMapper mapper,IOptions<JwtSettings> jwtOptions,TokenService tokenService)
             {
                 _contexto = contexto;
                 _mapper = mapper;
@@ -52,35 +48,21 @@ namespace Microservicio.Login.Api.Aplicacion
                     throw new AuthenticationException("La contraseña es incorrecta");
 
                 // Generar nuevo refresh token usando el servicio
-                usuario.RefreshToken = _tokenService.GenerarRefreshToken();
+                usuario.RefreshToken = _tokenService.CrearNuevoRefreshtokenParaElUsuario();
                 usuario.RefreshTokenExpiration = DateTime.UtcNow.AddMinutes(30);
 
                 // Guardar el refresh token en MongoDB
                 var filtro = Builders<Usuarioss>.Filter.Eq(u => u.Id, usuario.Id);
-                var update = Builders<Usuarioss>.Update
-                    .Set(u => u.RefreshToken, usuario.RefreshToken)
-                    .Set(u => u.RefreshTokenExpiration, usuario.RefreshTokenExpiration);
+                var update = Builders<Usuarioss>.Update.Set(u => u.RefreshToken, usuario.RefreshToken).Set(u => u.RefreshTokenExpiration, usuario.RefreshTokenExpiration);
 
                 await _contexto.UsuarioCollection.UpdateOneAsync(filtro, update, cancellationToken: cancellationToken);
 
                 // Generar JWT usando el servicio
-                var token = _tokenService.GenerarJwt(
-                    usuarioId: usuario.Id,
-                    nombreUsuario: usuario.Usuario,
-                    claveSecreta: _jwtSettings.SecretKey,
-                    issuer: _jwtSettings.Issuer,
-                    audience: _jwtSettings.Audience,
-                    minutosExpiracion: 10
-                );
+                var token = _tokenService.CrearTokenJwtParaAutizacion(usuarioId: usuario.Id,nombreUsuario: usuario.Usuario,claveSecreta: _jwtSettings.SecretKey,issuer: _jwtSettings.Issuer,audience: _jwtSettings.Audience,minutosExpiracion: 10);
 
                 var usuarioDto = _mapper.Map<UsuarioDto>(usuario);
 
-                return new LoginResponseDto
-                {
-                    Usuario = usuarioDto,
-                    Token = token,
-                    RefreshToken = usuario.RefreshToken
-                };
+                return new LoginResponseDto{Usuario = usuarioDto,Token = token,RefreshToken = usuario.RefreshToken};
             }
         }
     }

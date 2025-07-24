@@ -34,9 +34,7 @@ namespace Microservicio.Login.Api.Aplicacion
             public async Task<LoginResponseDto> Handle(RenovarTokenRequest request, CancellationToken cancellationToken)
             {
                 // Buscar usuario con ese refresh token
-                var usuario = await _contexto.UsuarioCollection
-                    .Find(u => u.RefreshToken == request.RefreshToken)
-                    .FirstOrDefaultAsync(cancellationToken);
+                var usuario = await _contexto.UsuarioCollection.Find(u => u.RefreshToken == request.RefreshToken).FirstOrDefaultAsync(cancellationToken);
 
                 // Si no existe el usuario o ya expiró el token → ejecutar logout
                 if (usuario == null || usuario.RefreshTokenExpiration <= DateTime.UtcNow)
@@ -48,13 +46,10 @@ namespace Microservicio.Login.Api.Aplicacion
                 // ⚠️ No se genera un nuevo refresh token, se mantiene el actual
 
                 // Solo se genera un nuevo JWT
-                string nuevoToken = _tokenService.GenerarJwt(usuarioId: usuario.Id,nombreUsuario: usuario.Usuario,claveSecreta: _jwtSettings.SecretKey,issuer: _jwtSettings.Issuer,audience: _jwtSettings.Audience,minutosExpiracion: 10);
+                string nuevoToken = _tokenService.CrearTokenJwtParaAutizacion(usuarioId: usuario.Id,nombreUsuario: usuario.Usuario,claveSecreta: _jwtSettings.SecretKey,issuer: _jwtSettings.Issuer,audience: _jwtSettings.Audience,minutosExpiracion: 10);
                 var usuarioDto = _mapper.Map<UsuarioDto>(usuario);
 
-                return new LoginResponseDto
-                {
-                    Usuario = usuarioDto,Token = nuevoToken,RefreshToken = usuario.RefreshToken // Se mantiene el mismo refresh token
-                };
+                return new LoginResponseDto{Usuario = usuarioDto,Token = nuevoToken,RefreshToken = usuario.RefreshToken};
             }
 
         }
