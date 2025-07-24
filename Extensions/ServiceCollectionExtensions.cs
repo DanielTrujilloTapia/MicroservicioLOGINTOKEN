@@ -39,6 +39,8 @@ namespace Microservicio.Login.Api.Extensions
             services.AddAutoMapper(cfg =>
                 cfg.AddMaps(typeof(ConsultaUsuario).Assembly));
 
+            services.AddScoped<TokenService>();
+
             return services;
         }
     }

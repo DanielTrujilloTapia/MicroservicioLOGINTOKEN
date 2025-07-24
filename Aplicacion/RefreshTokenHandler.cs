@@ -1,14 +1,8 @@
 ﻿using AutoMapper;
 using MediatR;
+using Microservicio.Login.Api.Persistencia;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microservicio.Login.Api.Modelo;
-
-using Microservicio.Login.Api.Persistencia;
-
 
 namespace Microservicio.Login.Api.Aplicacion
 {
@@ -24,51 +18,45 @@ namespace Microservicio.Login.Api.Aplicacion
             private readonly ContextoMongo _contexto;
             private readonly IMapper _mapper;
             private readonly JwtSettings _jwtSettings;
+            private readonly TokenService _tokenService;
+            private readonly IMediator _mediator;
 
-            public ManejadorRenovarToken(ContextoMongo contexto, IMapper mapper, IOptions<JwtSettings> jwtSettings)
+
+            public ManejadorRenovarToken(ContextoMongo contexto, IMapper mapper, IOptions<JwtSettings> jwtSettings, TokenService tokenService, IMediator mediator)
             {
                 _contexto = contexto ?? throw new ArgumentNullException(nameof(contexto));
                 _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
                 _jwtSettings = jwtSettings?.Value ?? throw new ArgumentNullException(nameof(jwtSettings));
+                _tokenService = tokenService ?? throw new ArgumentNullException(nameof(tokenService));
+                _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
             }
 
             public async Task<LoginResponseDto> Handle(RenovarTokenRequest request, CancellationToken cancellationToken)
             {
-                // Buscar usuario con refresh token válido
+                // Buscar usuario con ese refresh token
                 var usuario = await _contexto.UsuarioCollection
-                    .Find(u => u.RefreshToken == request.RefreshToken && u.RefreshTokenExpiration > DateTime.UtcNow)
+                    .Find(u => u.RefreshToken == request.RefreshToken)
                     .FirstOrDefaultAsync(cancellationToken);
 
-                if (usuario == null)
-                    throw new UnauthorizedAccessException("Refresh token inválido o expirado.");
+                // Si no existe el usuario o ya expiró el token → ejecutar logout
+                if (usuario == null || usuario.RefreshTokenExpiration <= DateTime.UtcNow)
+                {
+                    if (usuario != null){await _mediator.Send(new Logout.CerrarSesion { UsuarioId = usuario.Id }, cancellationToken);}
+                    throw new UnauthorizedAccessException("El refresh token ha expirado o no es válido. Inicie sesión nuevamente.");
+                }
 
-                // Generar y asignar nuevo refresh token
-                usuario.AsignarNuevoRefreshToken();
+                // ⚠️ No se genera un nuevo refresh token, se mantiene el actual
 
-                // Actualizar en Mongo
-                var filtro = Builders<Usuarioss>.Filter.Eq(u => u.Id, usuario.Id);
-                var update = Builders<Usuarioss>.Update
-                    .Set(u => u.RefreshToken, usuario.RefreshToken)
-                    .Set(u => u.RefreshTokenExpiration, usuario.RefreshTokenExpiration);
-
-                await _contexto.UsuarioCollection.UpdateOneAsync(filtro, update, cancellationToken: cancellationToken);
-
-                // Generar nuevo JWT
-                string nuevoToken = usuario.GenerarJwt(
-                    claveSecreta: _jwtSettings.SecretKey,
-                    issuer: _jwtSettings.Issuer,
-                    audience: _jwtSettings.Audience,
-                    minutosExpiracion: 60);
-
+                // Solo se genera un nuevo JWT
+                string nuevoToken = _tokenService.GenerarJwt(usuarioId: usuario.Id,nombreUsuario: usuario.Usuario,claveSecreta: _jwtSettings.SecretKey,issuer: _jwtSettings.Issuer,audience: _jwtSettings.Audience,minutosExpiracion: 2);
                 var usuarioDto = _mapper.Map<UsuarioDto>(usuario);
 
                 return new LoginResponseDto
                 {
-                    Usuario = usuarioDto,
-                    Token = nuevoToken,
-                    RefreshToken = usuario.RefreshToken
+                    Usuario = usuarioDto,Token = nuevoToken,RefreshToken = usuario.RefreshToken // Se mantiene el mismo refresh token
                 };
             }
+
         }
     }
 }

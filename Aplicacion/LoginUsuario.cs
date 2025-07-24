@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microservicio.Login.Api.Modelo;
 using Microservicio.Login.Api.Persistencia;
+using System.Collections.Generic;
 
 namespace Microservicio.Login.Api.Aplicacion
 {
@@ -23,19 +24,25 @@ namespace Microservicio.Login.Api.Aplicacion
             private readonly ContextoMongo _contexto;
             private readonly IMapper _mapper;
             private readonly JwtSettings _jwtSettings;
+            private readonly TokenService _tokenService;
 
-            public Manejador(ContextoMongo contexto, IMapper mapper, IOptions<JwtSettings> jwtOptions)
+            public Manejador(
+                ContextoMongo contexto,
+                IMapper mapper,
+                IOptions<JwtSettings> jwtOptions,
+                TokenService tokenService)
             {
                 _contexto = contexto;
                 _mapper = mapper;
                 _jwtSettings = jwtOptions.Value;
+                _tokenService = tokenService;
             }
 
             public async Task<LoginResponseDto> Handle(EjecutaLogin request, CancellationToken cancellationToken)
             {
                 var usuario = await _contexto.UsuarioCollection
                     .Find(x => x.Usuario == request.Usuario)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(cancellationToken);
 
                 if (usuario == null)
                     throw new KeyNotFoundException("El usuario no existe");
@@ -43,8 +50,9 @@ namespace Microservicio.Login.Api.Aplicacion
                 if (usuario.Password != request.Password)
                     throw new AuthenticationException("La contraseña es incorrecta");
 
-                // Generar nuevo refresh token
-                usuario.AsignarNuevoRefreshToken();
+                // Generar nuevo refresh token usando el servicio
+                usuario.RefreshToken = _tokenService.GenerarRefreshToken();
+                usuario.RefreshTokenExpiration = DateTime.UtcNow.AddDays(1);
 
                 // Guardar el refresh token en MongoDB
                 var filtro = Builders<Usuarioss>.Filter.Eq(u => u.Id, usuario.Id);
@@ -54,12 +62,14 @@ namespace Microservicio.Login.Api.Aplicacion
 
                 await _contexto.UsuarioCollection.UpdateOneAsync(filtro, update, cancellationToken: cancellationToken);
 
-                // Generar JWT
-                var token = usuario.GenerarJwt(
+                // Generar JWT usando el servicio
+                var token = _tokenService.GenerarJwt(
+                    usuarioId: usuario.Id,
+                    nombreUsuario: usuario.Usuario,
                     claveSecreta: _jwtSettings.SecretKey,
                     issuer: _jwtSettings.Issuer,
                     audience: _jwtSettings.Audience,
-                    minutosExpiracion: 60 // Puedes ajustar este valor
+                    minutosExpiracion: 1
                 );
 
                 var usuarioDto = _mapper.Map<UsuarioDto>(usuario);

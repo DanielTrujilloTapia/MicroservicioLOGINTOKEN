@@ -89,6 +89,31 @@ namespace Microservicio.Login.Api.Controllers
             }
         }
 
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenHandler.RenovarTokenRequest request)
+        {
+            try
+            {
+                var resultado = await _mediator.Send(request); // Devuelve LoginResponseDto
+
+                return Ok(new
+                {
+                    mensaje = "Token renovado exitosamente",
+                    usuario = resultado.Usuario,
+                    token = resultado.Token,
+                    refreshToken = resultado.RefreshToken
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { mensaje = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al renovar el token", error = ex.Message });
+            }
+        }
+
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] Logout.CerrarSesion request)
         {
