@@ -9,10 +9,10 @@ namespace Microservicio.Login.Api.Aplicacion
 {
     public class TokenService
     {
-        public string GenerarJwt(string usuarioId, string nombreUsuario, string claveSecreta, string issuer, string audience, int minutosExpiracion = 2)
+        public string GenerarJwt(string usuarioId, string nombreUsuario, string claveSecreta, string issuer, string audience, int minutosExpiracion = 10)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Convert.FromBase64String(claveSecreta);
+            var key = System.Text.Encoding.UTF8.GetBytes(claveSecreta);
 
             var claims = new[]
             {

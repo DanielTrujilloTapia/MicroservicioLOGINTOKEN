@@ -48,7 +48,7 @@ namespace Microservicio.Login.Api.Aplicacion
                 // ⚠️ No se genera un nuevo refresh token, se mantiene el actual
 
                 // Solo se genera un nuevo JWT
-                string nuevoToken = _tokenService.GenerarJwt(usuarioId: usuario.Id,nombreUsuario: usuario.Usuario,claveSecreta: _jwtSettings.SecretKey,issuer: _jwtSettings.Issuer,audience: _jwtSettings.Audience,minutosExpiracion: 2);
+                string nuevoToken = _tokenService.GenerarJwt(usuarioId: usuario.Id,nombreUsuario: usuario.Usuario,claveSecreta: _jwtSettings.SecretKey,issuer: _jwtSettings.Issuer,audience: _jwtSettings.Audience,minutosExpiracion: 10);
                 var usuarioDto = _mapper.Map<UsuarioDto>(usuario);
 
                 return new LoginResponseDto

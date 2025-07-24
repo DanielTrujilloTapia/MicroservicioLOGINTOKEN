@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microservicio.Login.Api.Modelo;
 using Microservicio.Login.Api.Persistencia;
 using System.Collections.Generic;
+using MongoDB.Driver.Linq;
 
 namespace Microservicio.Login.Api.Aplicacion
 {
@@ -52,7 +53,7 @@ namespace Microservicio.Login.Api.Aplicacion
 
                 // Generar nuevo refresh token usando el servicio
                 usuario.RefreshToken = _tokenService.GenerarRefreshToken();
-                usuario.RefreshTokenExpiration = DateTime.UtcNow.AddDays(1);
+                usuario.RefreshTokenExpiration = DateTime.UtcNow.AddMinutes(30);
 
                 // Guardar el refresh token en MongoDB
                 var filtro = Builders<Usuarioss>.Filter.Eq(u => u.Id, usuario.Id);
@@ -69,7 +70,7 @@ namespace Microservicio.Login.Api.Aplicacion
                     claveSecreta: _jwtSettings.SecretKey,
                     issuer: _jwtSettings.Issuer,
                     audience: _jwtSettings.Audience,
-                    minutosExpiracion: 1
+                    minutosExpiracion: 10
                 );
 
                 var usuarioDto = _mapper.Map<UsuarioDto>(usuario);
