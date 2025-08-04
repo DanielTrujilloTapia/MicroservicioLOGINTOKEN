@@ -49,7 +49,7 @@ namespace Microservicio.Login.Api.Aplicacion
 
                 // Generar nuevo refresh token usando el servicio
                 usuario.RefreshToken = _tokenService.CrearNuevoRefreshtokenParaElUsuario();
-                usuario.RefreshTokenExpiration = DateTime.UtcNow.AddMinutes(30);
+                usuario.RefreshTokenExpiration = DateTime.UtcNow.AddMinutes(5);
 
                 // Guardar el refresh token en MongoDB
                 var filtro = Builders<Usuarioss>.Filter.Eq(u => u.Id, usuario.Id);
@@ -58,7 +58,7 @@ namespace Microservicio.Login.Api.Aplicacion
                 await _contexto.UsuarioCollection.UpdateOneAsync(filtro, update, cancellationToken: cancellationToken);
 
                 // Generar JWT usando el servicio
-                var token = _tokenService.CrearTokenJwtParaAutizacion(usuarioId: usuario.Id,nombreUsuario: usuario.Usuario,claveSecreta: _jwtSettings.SecretKey,issuer: _jwtSettings.Issuer,audience: _jwtSettings.Audience,minutosExpiracion: 10);
+                var token = _tokenService.CrearTokenJwtParaAutizacion(usuarioId: usuario.Id,nombreUsuario: usuario.Usuario,claveSecreta: _jwtSettings.SecretKey,issuer: _jwtSettings.Issuer,audience: _jwtSettings.Audience,minutosExpiracion: 1);
 
                 var usuarioDto = _mapper.Map<UsuarioDto>(usuario);
 
