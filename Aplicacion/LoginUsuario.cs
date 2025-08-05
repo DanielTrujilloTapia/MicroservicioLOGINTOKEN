@@ -49,7 +49,7 @@ namespace Microservicio.Login.Api.Aplicacion
 
                 // Generar nuevo refresh token usando el servicio
                 usuario.RefreshToken = _tokenService.CrearNuevoRefreshtokenParaElUsuario();
-                usuario.RefreshTokenExpiration = DateTime.UtcNow.AddMinutes(5);
+                usuario.RefreshTokenExpiration = DateTime.UtcNow.AddDays(5);
 
                 // Guardar el refresh token en MongoDB
                 var filtro = Builders<Usuarioss>.Filter.Eq(u => u.Id, usuario.Id);
